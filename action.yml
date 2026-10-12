@@ -20,13 +20,38 @@ outputs:
     description: Generated static site dir
     value: ${{ steps.gallery.outputs.build-path }}
 
+  page-url:
+    description: Deployed GitHub Pages URL
+    value: ${{ steps.deploy.outputs.page_url }}
+
 runs:
   using: composite
-
   steps:
-    - name: Build gallery
+    - name: Config Pages
+      uses: actions/configure-pages@v6
+
+    - name: Config path
+      shell: bash
+      run: |
+        repo="${GITHUB_REPOSITORY##*/}"
+        if [[ "$repo" == "${GITHUB_REPOSITORY_OWNER}.github.io" ]]; then
+          echo "BASE_PATH=" >> "$GITHUB_ENV"
+        else
+          echo "BASE_PATH=/$repo" >> "$GITHUB_ENV"
+        fi
+
+    - name: Build
       id: gallery
       uses: $/.github/actions/build-gallery
       with:
         gh_usernames: ${{ inputs.gh_usernames }}
         gh_pat: ${{ inputs.gh_pat }}
+
+    - name: Upload
+      uses: actions/upload-pages-artifact@v5
+      with:
+        path: ${{ steps.gallery.outputs.build-path }}
+
+    - name: Deploy
+      id: deploy
+      uses: actions/deploy-pages@v5

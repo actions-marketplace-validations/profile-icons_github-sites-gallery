@@ -21,27 +21,27 @@ runs:
   using: composite
 
   steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-
     - name: Setup
       uses: actions/setup-node@v7
       with:
         node-version: 26
-        cache: npm
+        package-manager-cache: false
 
     - name: Install
       shell: bash
+      working-directory: ${{ github.action_path }}/../../..
       run: |
         npm ci
         npx playwright install --with-deps chromium
 
     - name: Verify
       shell: bash
+      working-directory: ${{ github.action_path }}/../../..
       run: npm run verify
 
     - name: Build
       shell: bash
+      working-directory: ${{ github.action_path }}/../../..
       env:
         GH_USERNAMES: ${{ inputs.gh_usernames }}
         GH_PAT: ${{ inputs.gh_pat }}
@@ -51,4 +51,6 @@ runs:
     - name: Output
       id: output
       shell: bash
-      run: echo "path=build" >> "$GITHUB_OUTPUT"
+      env:
+        GALLERY_ROOT: ${{ github.action_path }}/../../..
+      run: echo "path=$(realpath "$GALLERY_ROOT")/build" >> "$GITHUB_OUTPUT"

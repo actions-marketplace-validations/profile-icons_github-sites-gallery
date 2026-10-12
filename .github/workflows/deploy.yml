@@ -27,6 +27,16 @@ jobs:
       - name: Config
         uses: actions/configure-pages@v6
 
+      - name: Configure path
+        shell: bash
+        run: |
+          repo="${GITHUB_REPOSITORY##*/}"
+          if [[ "$repo" == "${GITHUB_REPOSITORY_OWNER}.github.io" ]]; then
+            echo "BASE_PATH=" >> "$GITHUB_ENV"
+          else
+            echo "BASE_PATH=/$repo" >> "$GITHUB_ENV"
+          fi
+
       - name: Build
         id: gallery
         uses: $/.github/actions/build-gallery
@@ -34,7 +44,7 @@ jobs:
           gh_usernames: ${{ secrets.GH_USERNAMES }}
           gh_pat: ${{ secrets.GH_PAT }}
 
-      - name: Upload Pages artifact
+      - name: Upload
         uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ steps.gallery.outputs.build-path }}

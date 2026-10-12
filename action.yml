@@ -1,5 +1,8 @@
 name: GitHub Sites Gallery
-description: Build a static gallery of deployed GitHub repository sites.
+description: Deploy a searchable preview gallery of GitHub Pages and description-linked deployed sites from owned repositories.
+branding:
+  icon: 'layout'
+  color: 'blue'
 
 inputs:
   gh_usernames:

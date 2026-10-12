@@ -1,0 +1,54 @@
+name: Build Sites Gallery
+description: Build the static GitHub sites gallery
+
+inputs:
+  gh_usernames:
+    description: Comma-separated GitHub usernames.
+    required: false
+    default: ''
+
+  gh_pat:
+    description: Optional GitHub PAT.
+    required: false
+    default: ''
+
+outputs:
+  build-path:
+    description: Generated static site dir
+    value: ${{ steps.output.outputs.path }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Setup
+      uses: actions/setup-node@v7
+      with:
+        node-version: 26
+        cache: npm
+
+    - name: Install
+      shell: bash
+      run: |
+        npm ci
+        npx playwright install --with-deps chromium
+
+    - name: Verify
+      shell: bash
+      run: npm run verify
+
+    - name: Build
+      shell: bash
+      env:
+        GH_USERNAMES: ${{ inputs.gh_usernames }}
+        GH_PAT: ${{ inputs.gh_pat }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: npm run build:all
+
+    - name: Output
+      id: output
+      shell: bash
+      run: echo "path=build" >> "$GITHUB_OUTPUT"

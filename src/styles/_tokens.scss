@@ -1,0 +1,55 @@
+$font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+$bg-canvas: #0c0e12;
+$bg-surface: #12151a;
+$bg-control: #15181e;
+$bg-control-hover: #1a1e25;
+$bg-menu: #161920;
+$bg-muted: #20242d;
+
+$text-primary: #f0f2f6;
+$text-secondary: #c7ccd6;
+$text-muted: #959caa;
+$text-faint: #707887;
+
+$border-subtle: #242832;
+$border-card: #292e38;
+$border-control: #2c313d;
+$border-strong: #3b414f;
+
+$accent: #6c72ff;
+$accent-soft: #6972e8;
+$accent-text: #8d95ff;
+
+$danger-surface: #2a2026;
+$danger-border: #563643;
+$danger-text: #d9abbc;
+
+$radius-sm: 7px;
+$radius-md: 9px;
+$radius-lg: 12px;
+$radius-pill: 999px;
+
+$grid-gap: 14px;
+$page-padding: clamp(14px, 2vw, 28px);
+
+@mixin focus-ring {
+  border-color: $accent-soft;
+  box-shadow: 0 0 0 3px rgba($accent-soft, .12);
+}
+
+@mixin control-shell {
+  height: 38px;
+  border: 1px solid $border-control;
+  border-radius: $radius-md;
+  background: $bg-control;
+  color: #d6dae2;
+  font-size: 12px;
+}
+
+@mixin truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,56 @@
+{
+  "name": "github-sites-gallery",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A searchable preview gallery of Pages and description-linked deployed sites for owned GitHub repositories using SvelteKit.",
+  "author": "profile-icons",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/profile-icons/github-sites-gallery.git"
+  },
+  "bugs": {
+    "url": "https://github.com/profile-icons/github-sites-gallery/issues"
+  },
+  "engines": {
+    "node": ">=26.6.5"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "data": "tsx scripts/sites.ts",
+    "previews": "tsx scripts/capture.ts",
+    "prepare:data": "npm run data && npm run previews",
+    "dev:all": "npm run prepare:data && npm run dev",
+    "build:all": "npm run prepare:data && npm run build",
+    "verify": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && biome check .",
+    "verify:fix": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && biome check --write ."
+  },
+  "dependencies": {
+    "fuse.js": "^7.5.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@octokit/types": "^18.0.0",
+    "@sveltejs/adapter-static": "^4.0.0",
+    "@sveltejs/kit": "^3.0.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/node": "^26.6.5",
+    "octokit": "^5.0.5",
+    "playwright": "^1.64.0",
+    "sass": "^1.105.1",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.6",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.6.0": true,
+    "esbuild@0.28.2": true
+  }
+}

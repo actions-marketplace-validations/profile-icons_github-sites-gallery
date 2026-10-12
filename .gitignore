@@ -1,0 +1,7 @@
+node_modules/
+.svelte-kit/
+build/
+static/
+src/lib/data/sites.json
+.DS_Store
+.idea

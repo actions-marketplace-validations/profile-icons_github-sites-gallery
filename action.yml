@@ -1,0 +1,29 @@
+name: GitHub Sites Gallery
+description: Build a static gallery of deployed GitHub repository sites.
+
+inputs:
+  gh_usernames:
+    description: Comma-separated GitHub usernames.
+    required: false
+    default: ''
+
+  gh_pat:
+    description: Optional GitHub PAT.
+    required: false
+    default: ''
+
+outputs:
+  build-path:
+    description: Generated static site dir
+    value: ${{ steps.gallery.outputs.build-path }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Build gallery
+      id: gallery
+      uses: $/.github/actions/build-gallery
+      with:
+        gh_usernames: ${{ inputs.gh_usernames }}
+        gh_pat: ${{ inputs.gh_pat }}

@@ -14,11 +14,13 @@ export interface AppConfig {
 export function loadConfig(): AppConfig {
   loadDotEnv()
 
-  const srcRepo = process.env.GITHUB_REPOSITORY ?? null
-  const configLogins = parseList(process.env.GH_USERNAMES)
-  const ghPat = process.env.GH_PAT?.trim() || ''
-  const installToken = process.env.GITHUB_TOKEN?.trim() || ''
-  const logins = unique(configLogins.length ? configLogins : [srcRepo?.split('/')[0] || ''])
+  const srcRepo: string | null = process.env.GITHUB_REPOSITORY ?? null
+  const configLogins: string[] = parseList(process.env.GH_USERNAMES)
+  const ghPat: string = process.env.GH_PAT?.trim() || ''
+  const installToken: string = process.env.GITHUB_TOKEN?.trim() || ''
+  const logins: string[] = unique(
+    configLogins.length ? configLogins : [srcRepo?.split('/')[0] || ''],
+  )
 
   return {
     logins,
@@ -43,7 +45,7 @@ function loadDotEnv(): void {
 function parseList(val: string | undefined): string[] {
   return (val || '')
     .split(/[\n,]/)
-    .map((item) => item.trim())
+    .map((item: string): string => item.trim())
     .filter(Boolean)
 }
 
@@ -52,7 +54,7 @@ function unique(vals: readonly string[]): string[] {
 }
 
 function posInt(val: string | undefined, fb: number): number {
-  const parsed = Number(val)
+  const parsed: number = Number(val)
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : fb
 }
 

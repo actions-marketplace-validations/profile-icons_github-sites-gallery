@@ -5,12 +5,12 @@ import { defineConfig } from 'vite'
 type BasePath = '' | `/${string}`
 
 function getBasePath(val: string | undefined): BasePath {
-  const path = (val ?? '').trim().replace(/^\/+|\/+$/g, '')
+  const path: string = (val ?? '').trim().replace(/^\/+|\/+$/g, '')
 
   return path ? `/${path}` : ''
 }
 
-const base = getBasePath(process.env.BASE_PATH)
+const base: BasePath = getBasePath(process.env.BASE_PATH)
 
 export default defineConfig({
   plugins: [

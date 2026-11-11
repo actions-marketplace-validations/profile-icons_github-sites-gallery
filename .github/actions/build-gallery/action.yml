@@ -46,7 +46,7 @@ runs:
         GH_USERNAMES: ${{ inputs.gh_usernames }}
         GH_PAT: ${{ inputs.gh_pat }}
         GITHUB_TOKEN: ${{ github.token }}
-      run: npm run build:all
+      run: npm run build:data
 
     - name: Output
       id: output

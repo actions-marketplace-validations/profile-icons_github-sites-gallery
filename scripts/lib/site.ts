@@ -1,7 +1,7 @@
 export function dscrSiteUrl(dscr: string): string | null {
-  const matches = dscr.match(/(?:https?:\/\/|www\.)[^\s<>"']+/gi) || []
+  const matches: readonly string[] = dscr.match(/(?:https?:\/\/|www\.)[^\s<>"']+/gi) || []
   for (const candidate of matches) {
-    const url = cleanUrl(candidate)
+    const url: string | null = cleanUrl(candidate)
     if (url) return url
   }
   return null
@@ -16,7 +16,7 @@ export function stripSiteUrl(dscr: string): string {
 }
 
 export function fbPagesUrl(owner: string, repo: string): string {
-  const host = `${owner.toLowerCase()}.github.io`
+  const host: string = `${owner.toLowerCase()}.github.io`
   return repo.toLowerCase() === host ? `https://${host}/` : `https://${host}/${repo}/`
 }
 
@@ -25,8 +25,8 @@ export function screenshotName(owner: string, repo: string): string {
 }
 
 export function latestDate(...vals: Array<string | null | undefined>): string | null {
-  const timestamps = vals
-    .filter((val): val is string => Boolean(val))
+  const timestamps: number[] = vals
+    .filter((val: string | null | undefined): val is string => Boolean(val))
     .map(Date.parse)
     .filter(Number.isFinite)
   return timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null
@@ -38,14 +38,14 @@ export async function mapConcurr<T, R>(
   mapper: (item: T) => Promise<R>,
 ): Promise<R[]> {
   if (!items.length) return []
-  const res = new Array<R>(items.length)
-  const entries = items.entries()
+  const res: R[] = new Array<R>(items.length)
+  const entries: ArrayIterator<[number, T]> = items.entries()
 
-  const worker = async (): Promise<void> => {
+  const worker: () => Promise<void> = async (): Promise<void> => {
     while (true) {
-      const next = entries.next()
+      const next: IteratorResult<[number, T], undefined> = entries.next()
       if (next.done) return
-      const [idx, item] = next.value
+      const [idx, item]: [number, T] = next.value
       res[idx] = await mapper(item)
     }
   }
@@ -55,13 +55,13 @@ export async function mapConcurr<T, R>(
 }
 
 function cleanUrl(val: string): string | null {
-  let candidate = val.trim().replace(/[),.;:!?\]}>]+$/g, '')
+  let candidate: string = val.trim().replace(/[),.;:!?\]}>]+$/g, '')
   if (/^www\./i.test(candidate)) candidate = `https://${candidate}`
 
   try {
-    const url = new URL(candidate)
+    const url: URL = new URL(candidate)
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
-    const host = url.hostname.toLowerCase()
+    const host: string = url.hostname.toLowerCase()
     if (
       host === 'github.com' ||
       host.endsWith('.github.com') ||

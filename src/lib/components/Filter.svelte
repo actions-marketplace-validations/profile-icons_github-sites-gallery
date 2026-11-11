@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '#lib/i18n/index.ts'
+  import { closeOnMouseLeave } from '#lib/popover.ts'
   import type { FilterSort } from '#lib/types.ts'
 
   export let langs: readonly string[] = []
@@ -7,19 +8,22 @@
   export let selectedLangs: readonly string[] = []
   export let selectedTopics: readonly string[] = []
   export let sort: FilterSort = 'alphabetical'
-  export let onSortChange: (val: FilterSort) => void = () => undefined
-  export let onLangsChange: (val: string[]) => void = () => undefined
-  export let onTopicsChange: (val: string[]) => void = () => undefined
+  export let onSortChange: (val: FilterSort) => void = (): void => undefined
+  export let onLangsChange: (val: string[]) => void = (): void => undefined
+  export let onTopicsChange: (val: string[]) => void = (): void => undefined
 
-  let langQuery = ''
-  let topicQuery = ''
+  let langQuery: string = ''
+  let topicQuery: string = ''
+  let selectedCount: number
+  let filteredLangs: string[]
+  let filteredTopics: string[]
 
   $: selectedCount = selectedLangs.length + selectedTopics.length
   $: filteredLangs = searchOptions(langs, langQuery)
   $: filteredTopics = searchOptions(topics, topicQuery)
 
   function toggle(list: readonly string[], val: string, callback: (val: string[]) => void): void {
-    const nxt = new Set(list)
+    const nxt: Set<string> = new Set(list)
     if (nxt.has(val)) nxt.delete(val)
     else nxt.add(val)
     callback([...nxt])
@@ -31,13 +35,13 @@
   }
 
   function searchOptions(options: readonly string[], query: string): string[] {
-    const normalizedQuery = query.trim().toLocaleLowerCase()
+    const normalizedQuery: string = query.trim().toLocaleLowerCase()
     if (!normalizedQuery) return [...options]
-    return options.filter((option) => option.toLocaleLowerCase().includes(normalizedQuery))
+    return options.filter((option: string): boolean => option.toLocaleLowerCase().includes(normalizedQuery))
   }
 </script>
 
-<details name="gallery-tools" class="popover filter-popover">
+<details name="gallery-tools" class="popover filter-popover" use:closeOnMouseLeave>
   <summary class="control-button" aria-label={$t('filterSites')}>
     <span aria-hidden="true">⌁</span>
     <span class="control-label">{$t('filter')}</span>
@@ -55,16 +59,16 @@
         {/if}
         <div class="sort-direction" role="group" aria-label={$t('filterOrder')}>
           <button
-            type="button"
-            class:active={sort === 'alphabetical'}
-            aria-pressed={sort === 'alphabetical'}
-            onclick={() => onSortChange('alphabetical')}
+                  type="button"
+                  class:active={sort === 'alphabetical'}
+                  aria-pressed={sort === 'alphabetical'}
+                  onclick={(): void => onSortChange('alphabetical')}
           >{$t('alphabetical')}</button>
           <button
-            type="button"
-            class:active={sort === 'usage'}
-            aria-pressed={sort === 'usage'}
-            onclick={() => onSortChange('usage')}
+                  type="button"
+                  class:active={sort === 'usage'}
+                  aria-pressed={sort === 'usage'}
+                  onclick={(): void => onSortChange('usage')}
           >{$t('mostUsed')}</button>
         </div>
       </div>
@@ -85,10 +89,10 @@
           <div class="choice-cloud">
             {#each filteredLangs as lang (lang)}
               <button
-                type="button"
-                class:selected={selectedLangs.includes(lang)}
-                aria-pressed={selectedLangs.includes(lang)}
-                onclick={() => toggle(selectedLangs, lang, onLangsChange)}
+                      type="button"
+                      class:selected={selectedLangs.includes(lang)}
+                      aria-pressed={selectedLangs.includes(lang)}
+                      onclick={(): void => toggle(selectedLangs, lang, onLangsChange)}
               >{lang}</button>
             {/each}
           </div>
@@ -113,10 +117,10 @@
           <div class="choice-cloud">
             {#each filteredTopics as topic (topic)}
               <button
-                type="button"
-                class:selected={selectedTopics.includes(topic)}
-                aria-pressed={selectedTopics.includes(topic)}
-                onclick={() => toggle(selectedTopics, topic, onTopicsChange)}
+                      type="button"
+                      class:selected={selectedTopics.includes(topic)}
+                      aria-pressed={selectedTopics.includes(topic)}
+                      onclick={(): void => toggle(selectedTopics, topic, onTopicsChange)}
               >#{topic}</button>
             {/each}
           </div>

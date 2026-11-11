@@ -1,15 +1,18 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { locale, localeDisplayName, restoreLocale, setLocale, supLocales, t } from '#lib/i18n/index.ts'
+  import { type Locale, locale, localeDisplayName, restoreLocale, setLocale, supLocales, t } from '#lib/i18n/index.ts'
 
   let dialog: HTMLDialogElement
-  let search = ''
-  let isErr = false
-  let sel = 0
+  let search: string = ''
+  let isErr: boolean = false
+  let sel: number = 0
+  let displayNames: Record<Locale, string>
+  let query: string
+  let filtered: Locale[]
 
-  $: displayNames = Object.fromEntries(supLocales.map((code) => [code, localeDisplayName(code, $locale)]))
+  $: displayNames = Object.fromEntries(supLocales.map((code: Locale): [Locale, string] => [code, localeDisplayName(code, $locale)]))
   $: query = norm(search)
-  $: filtered = supLocales.filter((code) => norm(`${displayNames[code]} ${code}`).includes(query))
+  $: filtered = supLocales.filter((code: Locale): boolean => norm(`${displayNames[code]} ${code}`).includes(query))
 
   onMount(restoreLocale)
 
@@ -31,15 +34,15 @@
 
   function handleDialogClick(event: MouseEvent): void {
     if (event.target !== dialog) return
-    const box = dialog.getBoundingClientRect()
+    const box: DOMRect = dialog.getBoundingClientRect()
     if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeDialog()
   }
 
-  async function choose(code: string): Promise<void> {
-    const id = ++sel
+  async function choose(code: Locale): Promise<void> {
+    const id: number = ++sel
     isErr = false
     try {
-      const applied = await setLocale(code)
+      const applied: boolean = await setLocale(code)
       if (applied && id === sel) dialog.close()
     } catch {
       if (id === sel) isErr = true
@@ -81,7 +84,7 @@
       {#if isErr}<p role="alert">{$t('localeError')}</p>{/if}
       <div class="locale-grid" translate="no">
         {#each filtered as code (code)}
-          <button class:selected={code === $locale} type="button" aria-pressed={code === $locale} onclick={() => choose(code)}>
+          <button class:selected={code === $locale} type="button" aria-pressed={code === $locale} onclick={(): Promise<void> => choose(code)}>
             <span lang={code}>{displayNames[code]}</span>
             <small dir="ltr">{code.toUpperCase()}</small>
           </button>

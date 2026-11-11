@@ -1,16 +1,16 @@
 import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { type Browser, chromium, type Page } from 'playwright'
+import { type Browser, chromium, type Page, type Response } from 'playwright'
 import type { Site } from '../src/lib/types'
-import { loadConfig } from './lib/config'
+import { type AppConfig, loadConfig } from './lib/config'
 import { mapConcurr } from './lib/site'
 
-const SITES_FILE = path.resolve('src/lib/data/sites.json')
-const SCREENSHOTS_DIR = path.resolve('static/screenshots')
-const SCREENSHOT_CONCURR = 3
-const { screenshotDelayMS } = loadConfig()
-const sites = parseSites(await readFile(SITES_FILE, 'utf8'))
-let capturedCount = 0
+const SITES_FILE: string = path.resolve('src/lib/data/sites.json')
+const SCREENSHOTS_DIR: string = path.resolve('static/screenshots')
+const SCREENSHOT_CONCURR: number = 3
+const { screenshotDelayMS }: AppConfig = loadConfig()
+const sites: Site[] = parseSites(await readFile(SITES_FILE, 'utf8'))
+let capturedCount: number = 0
 
 if (!sites.length) {
   console.log('Captured 0 site(s).')
@@ -19,17 +19,23 @@ if (!sites.length) {
 }
 
 await mkdir(SCREENSHOTS_DIR, { recursive: true })
-const browser = await chromium.launch({ headless: true })
+const browser: Browser = await chromium.launch({ headless: true })
 let isKeep: boolean[]
 
 try {
-  isKeep = await mapConcurr(sites, SCREENSHOT_CONCURR, (site) => capture(browser, site))
+  isKeep = await mapConcurr(
+    sites,
+    SCREENSHOT_CONCURR,
+    (site: Site): Promise<boolean> => capture(browser, site),
+  )
 } finally {
   await browser.close()
 }
 
-const retained = sites.filter((_, index) => isKeep[index])
-const removedCount = sites.length - retained.length
+const retained: Site[] = sites.filter(
+  (_: Site, index: number): boolean | undefined => isKeep[index],
+)
+const removedCount: number = sites.length - retained.length
 if (removedCount) {
   await writeFile(SITES_FILE, `${JSON.stringify(retained, null, 2)}\n`)
 }
@@ -38,14 +44,17 @@ console.log(`Captured ${capturedCount} site(s).`)
 console.log(`Removed ${removedCount} site(s) returning HTTP 404.`)
 
 async function capture(browser: Browser, site: Site): Promise<boolean> {
-  const page = await browser.newPage({
+  const page: Page = await browser.newPage({
     viewport: { width: 1440, height: 900 },
     deviceScaleFactor: 1,
   })
-  const outPath = path.join(SCREENSHOTS_DIR, path.basename(site.screenshot))
+  const outPath: string = path.join(SCREENSHOTS_DIR, path.basename(site.screenshot))
 
   try {
-    const res = await page.goto(site.siteUrl, { waitUntil: 'domcontentloaded', timeout: 25_000 })
+    const res: Response | null = await page.goto(site.siteUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 25_000,
+    })
     if (res?.status() === 404) {
       await removeIfPresent(outPath)
       return false
@@ -70,11 +79,13 @@ async function capture(browser: Browser, site: Site): Promise<boolean> {
 
 async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(screenshotDelayMS)
-  await page.evaluate(async () => document.fonts.ready)
+  await page.evaluate(async (): Promise<FontFaceSet> => document.fonts.ready)
 }
 
 async function removeStaleScreenshots(sites: readonly Site[]): Promise<void> {
-  const expected = new Set(sites.map((site) => path.basename(site.screenshot)))
+  const expected: Set<string> = new Set(
+    sites.map((site: Site): string => path.basename(site.screenshot)),
+  )
   for (const file of await readdir(SCREENSHOTS_DIR)) {
     if (file.endsWith('.webp') && !expected.has(file))
       await unlink(path.join(SCREENSHOTS_DIR, file))

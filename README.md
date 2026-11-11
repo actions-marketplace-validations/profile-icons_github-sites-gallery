@@ -1,8 +1,21 @@
 # GitHub Sites Gallery
 
-A searchable preview gallery of Pages and description-linked deployed sites for GitHub repositories.
+Preview gallery of sites deployed from or linked to public/private user/organization repositories using SvelteKit. 
 
-An example site is [found here](https://profile-icons.github.io/github-sites-gallery/).
+Filter by:
+
+* languages
+* topics
+
+Sort by (most/least):
+
+* stars
+* forks
+* traffic
+* languages (used)
+* contributor count
+* activity
+* created
 
 # Instructions
 
@@ -39,15 +52,7 @@ jobs:
         uses: profile-icons/github-sites-gallery@main
         with:
           gh_usernames: ${{ secrets.GH_USERNAMES }}  # optional, eg: 'username,orgA,orgB,...'
-          gh_pat: ${{ secrets.GH_PAT }}  # optional: Personal Access Token (PAT)
-```
-
-# Contribute
-
-Before making a Pull Request, ensure it addresses an Issue, and verify the branch passes:
-
-```bash
-npm run verify:fix
+          gh_pat: ${{ secrets.GH_PAT }}  # optional: Personal Access Token (PAT) - for org/private repo, traffic auth..
 ```
 
 ## Install
@@ -60,12 +65,20 @@ npx playwright install --with-deps chromium
 ## Run
 
 ```bash
-npm run dev:all
+npm run dev:data
 ```
 
 ## Build
 
 ```bash
-npm run build:all
+npm run build:data
 npm run preview
+```
+
+## Contribute
+
+Before making a Pull Request, ensure it addresses an Issue, and verify:
+
+```bash
+npm run verify:fix
 ```

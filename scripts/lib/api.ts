@@ -23,8 +23,8 @@ export class MeterAPI {
   readonly #calls: CallAPI[] = []
 
   record(res?: ResLike): void {
-    const hdrs = res?.hdrs || {}
-    const resource = hdr(hdrs, 'x-ratelimit-resource') || 'unmetered/unknown'
+    const hdrs: HeaderMap = res?.hdrs || {}
+    const resource: string = hdr(hdrs, 'x-ratelimit-resource') || 'unmetered/unknown'
 
     this.#calls.push({
       resource,
@@ -40,11 +40,14 @@ export class MeterAPI {
       return
     }
 
-    const ttlCost = this.#calls.reduce((sum, call) => sum + call.cost, 0)
-    const resources = new Map<string, ResourceTotals>()
+    const ttlCost: number = this.#calls.reduce(
+      (sum: number, call: CallAPI): number => sum + call.cost,
+      0,
+    )
+    const resources: Map<string, ResourceTotals> = new Map<string, ResourceTotals>()
 
     for (const call of this.#calls) {
-      const ttls = resources.get(call.resource) || {
+      const ttls: ResourceTotals = resources.get(call.resource) || {
         reqs: 0,
         cost: 0,
         remaining: null,
@@ -62,7 +65,7 @@ export class MeterAPI {
     console.log(`Total HTTP requests: ${this.#calls.length}`)
     console.log(`Total GitHub API rate cost: ${ttlCost} unit${ttlCost === 1 ? '' : 's'}`)
     for (const [resource, ttls] of resources) {
-      const quota =
+      const quota: string =
         ttls.remaining !== null && ttls.limit !== null
           ? `; last reported remaining ${ttls.remaining}/${ttls.limit}`
           : ''
@@ -72,13 +75,13 @@ export class MeterAPI {
 }
 
 function hdr(hdrs: HeaderMap, key: string): string | null {
-  const val = hdrs[key]
+  const val: HeaderValue = hdrs[key]
   return val === undefined ? null : String(val)
 }
 
 function numericHdr(hdrs: HeaderMap, key: string): number | null {
-  const raw = hdr(hdrs, key)
+  const raw: string | null = hdr(hdrs, key)
   if (raw === null) return null
-  const val = Number(raw)
+  const val: number = Number(raw)
   return Number.isFinite(val) ? val : null
 }

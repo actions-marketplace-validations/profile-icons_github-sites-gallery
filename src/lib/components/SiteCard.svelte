@@ -2,16 +2,25 @@
   import { asset } from '$app/paths'
   import { t } from '#lib/i18n/index.ts'
   import { onMount, tick } from 'svelte'
-  import type { Site } from '#lib/types.ts'
+  import type { Lang, Site } from '#lib/types.ts'
   import LockIcon from './icons/LockIcon.svelte'
   import Octicon from './icons/Octicon.svelte'
 
   export let site: Site
 
-  let isImgFail = false
-  let langLimit = 5
+  let isImgFail: boolean = false
+  let langLimit: number = 5
   let langRow: HTMLDivElement | null = null
   let repoIcon: 'repo-forked' | 'repo-template' | 'repo' = 'repo'
+  let screenshotUrl: string
+  let visLangs: Lang[]
+  let nameSeparator: number
+  let repoOwner: string
+  let repoName: string
+  let summary: string
+  let initials: string
+  let privateLinkLbl: string
+  let repoGithubLbl: string
 
   $: screenshotUrl = site.screenshot
     ? asset(site.screenshot.replace(/^\/+/, '') as Parameters<typeof asset>[0])
@@ -25,7 +34,7 @@
     .split(/[-_\s]+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
+    .map((part: string): string => part[0]?.toUpperCase() ?? '')
     .join('')
   $: repoIcon = site.isFork ? 'repo-forked' : (site.isTemplate ? 'repo-template' : 'repo')
   $: privateLinkLbl = $t(site.isFork ? 'privateForkLink' : (site.isTemplate ? 'privateTemplateLink' : 'privateLink'))
@@ -42,11 +51,11 @@
     }
   }
 
-  onMount(() => {
+  onMount((): (() => void) => {
     void fitLangs()
-    const resizeObs = new ResizeObserver(() => void fitLangs())
+    const resizeObs: ResizeObserver = new ResizeObserver((): void => void fitLangs())
     if (langRow) resizeObs.observe(langRow)
-    return () => resizeObs.disconnect()
+    return (): void => resizeObs.disconnect()
   })
 </script>
 
@@ -58,7 +67,7 @@
           src={screenshotUrl}
           alt={$t('preview', { name: site.fullName })}
           loading="lazy"
-          onerror={() => (isImgFail = true)}
+          onerror={(): boolean => (isImgFail = true)}
         />
       {:else}
         <div class="preview-fallback" aria-hidden="true">

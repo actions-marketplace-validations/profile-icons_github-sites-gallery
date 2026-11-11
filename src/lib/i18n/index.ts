@@ -1,24 +1,32 @@
-import { derived, writable } from 'svelte/store'
+import { derived, type Readable, type Writable, writable } from 'svelte/store'
 import eng from './locales/en.json'
 
 export type Locale = string
 export type MsgKey = keyof typeof eng
 export type Msgs = Record<MsgKey, string>
 export type TranslationParams = Readonly<Record<string, string | number>>
+export type Translator = (key: MsgKey, params?: TranslationParams) => string
+type LocaleLoader = () => Promise<Msgs>
 
-export const STORAGE_KEY = 'gallery-locale'
-const modules = import.meta.glob<Msgs>(['./locales/*.json', '!./locales/en.json'], {
-  import: 'default',
-})
-const loaders = new Map(
-  Object.entries(modules).map(([path, load]) => [path.slice(path.lastIndexOf('/') + 1, -5), load]),
+export const STORAGE_KEY: string = 'gallery-locale'
+const modules: Record<string, LocaleLoader> = import.meta.glob<Msgs>(
+  ['./locales/*.json', '!./locales/en.json'],
+  {
+    import: 'default',
+  },
+)
+const loaders: Map<Locale, LocaleLoader> = new Map(
+  Object.entries(modules).map(([path, load]: [string, LocaleLoader]): [Locale, LocaleLoader] => [
+    path.slice(path.lastIndexOf('/') + 1, -5),
+    load,
+  ]),
 )
 export const supLocales: readonly Locale[] = ['en', ...loaders.keys()].sort()
-const curLocale = writable<Locale>('en')
-export const locale = { subscribe: curLocale.subscribe }
-const dicts = new Map<Locale, Msgs>([['en', eng]])
-const pending = new Map<Locale, Promise<Msgs>>()
-const rtl = new Set([
+const curLocale: Writable<Locale> = writable<Locale>('en')
+export const locale: Readable<Locale> = { subscribe: curLocale.subscribe }
+const dicts: Map<Locale, Msgs> = new Map<Locale, Msgs>([['en', eng]])
+const pending: Map<Locale, Promise<Msgs>> = new Map<Locale, Promise<Msgs>>()
+const rtl: ReadonlySet<Locale> = new Set([
   'ar',
   'arc',
   'ckb',
@@ -38,7 +46,7 @@ const rtl = new Set([
   'ur',
   'yi',
 ])
-let reqNum = 0
+let reqNum: number = 0
 
 export function isLocaleRTL(code: Locale): boolean {
   return rtl.has(code.toLowerCase().split('-', 1)[0] ?? code)
@@ -49,26 +57,26 @@ export function translate(
   code: Locale = 'en',
   params: TranslationParams = {},
 ): string {
-  const template = dicts.get(code)?.[key] ?? eng[key]
-  return template.replace(/\{([A-Za-z0-9_]+)\}/gu, (match: string, name: string) =>
+  const template: string = dicts.get(code)?.[key] ?? eng[key]
+  return template.replace(/\{([A-Za-z0-9_]+)\}/gu, (match: string, name: string): string =>
     params[name] === undefined ? match : String(params[name]),
   )
 }
 
-export const t = derived(
+export const t: Readable<Translator> = derived(
   locale,
-  (code) =>
-    (key: MsgKey, params: TranslationParams = {}) =>
+  (code: Locale): Translator =>
+    (key: MsgKey, params: TranslationParams = {}): string =>
       translate(key, code, params),
 )
 
 export async function setLocale(code: Locale): Promise<boolean> {
-  const id = ++reqNum
-  const nxt = code === 'en' || loaders.has(code) ? code : 'en'
+  const id: number = ++reqNum
+  const nxt: Locale = code === 'en' || loaders.has(code) ? code : 'en'
   if (!dicts.has(nxt)) {
-    const load = loaders.get(nxt)
+    const load: LocaleLoader | undefined = loaders.get(nxt)
     if (load) {
-      let loading = pending.get(nxt)
+      let loading: Promise<Msgs> | undefined = pending.get(nxt)
       if (!loading) {
         loading = load()
         pending.set(nxt, loading)
@@ -95,8 +103,8 @@ export async function setLocale(code: Locale): Promise<boolean> {
 
 export function restoreLocale(): void {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && supLocales.includes(saved)) void setLocale(saved).catch(() => undefined)
+    const saved: string | null = localStorage.getItem(STORAGE_KEY)
+    if (saved && supLocales.includes(saved)) void setLocale(saved).catch((): undefined => undefined)
   } catch {}
 }
 

@@ -1,5 +1,13 @@
-import Fuse from 'fuse.js'
-import type { FilterSort, SecondarySortKey, Site, SortDir, SortKey, SortOption } from './types'
+import Fuse, { type FuseResult } from 'fuse.js'
+import type {
+  FilterSort,
+  Lang,
+  SecondarySortKey,
+  Site,
+  SortDir,
+  SortKey,
+  SortOption,
+} from './types'
 
 export const SORT_OPTIONS = [
   { val: 'stars', lbl: 'Stars', shortLbl: 'Stars' },
@@ -14,8 +22,10 @@ export const SORT_OPTIONS = [
 const DATE_SORTS: ReadonlySet<SortKey> = new Set(['activityAt', 'createdAt'])
 
 export function getSortOptions(sites: readonly Site[]): readonly SortOption[] {
-  const isTraffic = sites.some((site) => traffic(site) !== null)
-  return SORT_OPTIONS.filter((option) => option.val !== 'trafficT' || isTraffic)
+  const isTraffic: boolean = sites.some((site: Site): boolean => traffic(site) !== null)
+  return SORT_OPTIONS.filter(
+    (option: SortOption): boolean => option.val !== 'trafficT' || isTraffic,
+  )
 }
 
 export function traffic({ trafficViews, trafficClones }: Site): number | null {
@@ -26,7 +36,7 @@ export function traffic({ trafficViews, trafficClones }: Site): number | null {
     trafficClones < 0
   )
     return null
-  const ttl = trafficViews + trafficClones
+  const ttl: number = trafficViews + trafficClones
   return Number.isFinite(ttl) ? ttl : null
 }
 
@@ -46,7 +56,7 @@ export function createSiteSearch(sites: readonly Site[]): Fuse<Site> {
 
 export function langNames(sites: readonly Site[], sort: FilterSort = 'alphabetical'): string[] {
   return sortedOptions(
-    sites.map((site) => site.languages.map(({ name }) => name)),
+    sites.map((site: Site): string[] => site.languages.map(({ name }: Lang): string => name)),
     sort,
   )
 }
@@ -56,13 +66,15 @@ export function topicNames(
   selectedLangs: readonly string[] = [],
   sort: FilterSort = 'alphabetical',
 ): string[] {
-  const relSites = selectedLangs.length
-    ? sites.filter((site) =>
-        selectedLangs.some((name) => site.languages.some((lang) => lang.name === name)),
+  const relSites: readonly Site[] = selectedLangs.length
+    ? sites.filter((site: Site): boolean =>
+        selectedLangs.some((name: string): boolean =>
+          site.languages.some((lang: Lang): boolean => lang.name === name),
+        ),
       )
     : sites
   return sortedOptions(
-    relSites.map((site) => site.topics),
+    relSites.map((site: Site): readonly string[] => site.topics),
     sort,
   )
 }
@@ -74,24 +86,30 @@ export function filterSites(
   selectedLangs: readonly string[],
   selectedTopics: readonly string[],
 ): Site[] {
-  let res = query.trim() ? search.search(query.trim()).map(({ item }) => item) : [...sites]
+  let res: Site[] = query.trim()
+    ? search.search(query.trim()).map(({ item }: FuseResult<Site>): Site => item)
+    : [...sites]
 
   if (selectedLangs.length) {
-    res = res.filter((site) =>
-      selectedLangs.some((name) => site.languages.some((lang) => lang.name === name)),
+    res = res.filter((site: Site): boolean =>
+      selectedLangs.some((name: string): boolean =>
+        site.languages.some((lang: Lang): boolean => lang.name === name),
+      ),
     )
   }
 
   if (selectedTopics.length) {
-    res = res.filter((site) => selectedTopics.some((topic) => site.topics.includes(topic)))
+    res = res.filter((site: Site): boolean =>
+      selectedTopics.some((topic: string): boolean => site.topics.includes(topic)),
+    )
   }
 
   return res
 }
 
 export function langUseScores(sites: readonly Site[]): ReadonlyMap<string, number> {
-  const langBytes = new Map<string, number>()
-  let ttlBytes = 0
+  const langBytes: Map<string, number> = new Map<string, number>()
+  let ttlBytes: number = 0
 
   for (const site of sites) {
     for (const { name, bytes } of site.languages) {
@@ -101,11 +119,11 @@ export function langUseScores(sites: readonly Site[]): ReadonlyMap<string, numbe
     }
   }
 
-  const scores = new Map<string, number>()
+  const scores: Map<string, number> = new Map<string, number>()
   if (!ttlBytes) return scores
   for (const site of sites) {
-    const names = new Set(site.languages.map(({ name }) => name))
-    let bytes = 0
+    const names: Set<string> = new Set(site.languages.map(({ name }: Lang): string => name))
+    let bytes: number = 0
     for (const name of names) bytes += langBytes.get(name) ?? 0
     if (bytes > 0) scores.set(site.repoUrl, (bytes / ttlBytes) * 100)
   }
@@ -121,7 +139,7 @@ export function sortSites(
   langScores: ReadonlyMap<string, number> = langUseScores(sites),
 ): Site[] {
   return [...sites].sort(
-    (a, b) =>
+    (a: Site, b: Site): number =>
       compareMetric(a, b, primary, dir, langScores) ||
       compareMetric(a, b, secondary, dir, langScores) ||
       compareNames(a.fullName, b.fullName),
@@ -136,10 +154,10 @@ function metricVal(
   if (key === 'none') return null
   if (key === 'langUse') return langScores.get(site.repoUrl) ?? null
   if (key === 'trafficT') return traffic(site)
-  const val = site[key]
+  const val: string | number | null = site[key]
   if (val === null || val === undefined || val === '') return null
   if (DATE_SORTS.has(key)) {
-    const ts = Date.parse(String(val))
+    const ts: number = Date.parse(String(val))
     return Number.isFinite(ts) ? ts : null
   }
   return typeof val === 'number' && Number.isFinite(val) ? val : null
@@ -153,8 +171,8 @@ function compareMetric(
   langScores: ReadonlyMap<string, number>,
 ): number {
   if (key === 'none') return 0
-  const left = metricVal(a, key, langScores)
-  const right = metricVal(b, key, langScores)
+  const left: number | null = metricVal(a, key, langScores)
+  const right: number | null = metricVal(b, key, langScores)
   if (left === null && right === null) return 0
   if (left === null) return 1
   if (right === null) return -1
@@ -166,7 +184,7 @@ function compareNames(a: string, b: string): number {
 }
 
 function sortedOptions(groups: readonly (readonly string[])[], sort: FilterSort): string[] {
-  const counts = new Map<string, number>()
+  const counts: Map<string, number> = new Map<string, number>()
   for (const group of groups) {
     for (const name of new Set(group)) {
       if (name) counts.set(name, (counts.get(name) ?? 0) + 1)
@@ -174,7 +192,7 @@ function sortedOptions(groups: readonly (readonly string[])[], sort: FilterSort)
   }
 
   return [...counts.keys()].sort(
-    (a, b) =>
+    (a: string, b: string): number =>
       (sort === 'usage' ? (counts.get(b) ?? 0) - (counts.get(a) ?? 0) : 0) ||
       a.localeCompare(b, undefined, { sensitivity: 'base' }),
   )

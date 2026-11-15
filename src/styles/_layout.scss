@@ -1,4 +1,4 @@
-@use 'tokens' as *;
+@use "tokens" as *;
 
 .app-shell {
   height: 100dvh;
@@ -7,7 +7,7 @@
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
   background:
-    radial-gradient(circle at 15% -15%, rgba(96, 113, 255, .1), transparent 28rem),
+    radial-gradient(circle at 15% -15%, rgba(96, 113, 255, 0.1), transparent 28rem),
     $bg-canvas;
 }
 
@@ -19,7 +19,7 @@
   gap: 16px;
   padding: 9px $page-padding;
   border-bottom: 1px solid $border-subtle;
-  background: rgba($bg-canvas, .9);
+  background: rgba($bg-canvas, 0.9);
   backdrop-filter: blur(16px);
 }
 

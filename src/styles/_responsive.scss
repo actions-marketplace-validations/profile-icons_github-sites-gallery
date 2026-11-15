@@ -1,13 +1,27 @@
-@use 'tokens' as *;
+@use "tokens" as *;
 
 @media (max-width: 780px) {
-  .topbar { min-height: 54px; }
-  .grid-shell { padding-block: 10px; }
-  .site-grid { gap: 10px; }
-  .result-count { display: none; }
-  .pagination-bar { grid-template-columns: 1fr auto 1fr; }
-  .pager { grid-column: 2; }
-  .capacity { grid-column: 3; }
+  .topbar {
+    min-height: 54px;
+  }
+  .grid-shell {
+    padding-block: 10px;
+  }
+  .site-grid {
+    gap: 10px;
+  }
+  .result-count {
+    display: none;
+  }
+  .pagination-bar {
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .pager {
+    grid-column: 2;
+  }
+  .capacity {
+    grid-column: 3;
+  }
 }
 
 @media (max-width: 520px) {
@@ -23,8 +37,12 @@
       height: 30px;
     }
 
-    h1 { font-size: 13px; }
-    span { font-size: 9px; }
+    h1 {
+      font-size: 13px;
+    }
+    span {
+      font-size: 9px;
+    }
   }
 
   .toolbar {
@@ -43,7 +61,9 @@
     justify-content: center;
     padding: 0;
 
-    .control-label { display: none; }
+    .control-label {
+      display: none;
+    }
   }
 
   .count-badge {
@@ -52,7 +72,9 @@
     right: -4px;
   }
 
-  .clear-compact { display: none; }
+  .clear-compact {
+    display: none;
+  }
 
   .popover-panel {
     position: fixed;
@@ -63,32 +85,56 @@
     max-width: none;
   }
 
-  .filter-panel { max-height: calc(100dvh - 150px); }
+  .filter-panel {
+    max-height: calc(100dvh - 150px);
+  }
 
-  .grid-shell { padding-inline: 10px; }
+  .grid-shell {
+    padding-inline: 10px;
+  }
 
   .pagination-bar {
     min-height: 43px;
     padding-inline: 10px;
   }
 
-  .capacity { font-size: 9px; }
-  .private-badge span { display: none; }
-  .card-stats { gap: 5px; }
+  .capacity {
+    font-size: 9px;
+  }
+  .private-badge span {
+    display: none;
+  }
+  .card-stats {
+    gap: 5px;
+  }
 }
 
 @media (max-height: 620px) {
-  .brand span { display: none; }
-  .topbar { min-height: 46px; }
-  .toolbar { padding-block: 5px; }
+  .brand span {
+    display: none;
+  }
+  .topbar {
+    min-height: 46px;
+  }
+  .toolbar {
+    padding-block: 5px;
+  }
   .search-box,
-  .control-button { height: 34px; }
-  .grid-shell { padding-block: 7px; }
-  .pagination-bar { min-height: 40px; }
-  .site-card { grid-template-rows: minmax(0, 1fr) minmax(104px, auto); }
+  .control-button {
+    height: 34px;
+  }
+  .grid-shell {
+    padding-block: 7px;
+  }
+  .pagination-bar {
+    min-height: 40px;
+  }
+  .site-card {
+    grid-template-rows: minmax(0, 1fr) minmax(104px, auto);
+  }
   .card-body {
     padding-block: 8px;
-    grid-template-rows: 24px minmax(0, 1fr) 24px;
+    grid-template-rows: auto minmax(0, 1fr) 24px;
     gap: 5px;
   }
 }

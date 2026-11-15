@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '#lib/i18n/index.ts'
   import Gallery from '#lib/components/Gallery.svelte'
   import { metadata, sites } from '#lib/data/index.ts'
 
@@ -6,8 +7,8 @@
 </script>
 
 <svelte:head>
-  <title>{titleName}'s Sites</title>
-  <meta name="description" content="A searchable preview gallery of Pages and description-linked deployed sites for owned GitHub repositories using SvelteKit." />
+  <title>{$t('pageTitle', { name: titleName })}</title>
+  <meta name="description" content={$t('metaDescription')} />
   <meta name="author" content="Adam Ross (https://github.com/r055a)" />
   <meta name="theme-color" content="#0c0e12" />
 </svelte:head>

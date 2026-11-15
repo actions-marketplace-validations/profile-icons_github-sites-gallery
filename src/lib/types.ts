@@ -1,6 +1,14 @@
 export type Theme = 'light' | 'dark'
 export type SortDir = 'asc' | 'desc'
-export type SortKey = 'stars' | 'forks' | 'contributors' | 'activityAt' | 'createdAt'
+export type FilterSort = 'alphabetical' | 'usage'
+export type SortKey =
+  | 'stars'
+  | 'forks'
+  | 'contributors'
+  | 'activityAt'
+  | 'createdAt'
+  | 'langUse'
+  | 'trafficT'
 export type SecondarySortKey = SortKey | 'none'
 
 export interface Lang {
@@ -22,6 +30,8 @@ export interface Site {
   readonly stars: number
   readonly forks: number
   readonly contributors: number | null
+  readonly trafficViews?: number | null
+  readonly trafficClones?: number | null
   readonly createdAt: string | null
   readonly activityAt: string | null
   readonly screenshot: string

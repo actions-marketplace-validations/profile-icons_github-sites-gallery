@@ -1,5 +1,5 @@
 name: GitHub Sites Gallery
-description: Deploy a searchable preview gallery of GitHub Pages and description-linked deployed sites from owned repositories.
+description: Deploy a preview gallery of sites deployed from and linked to public and private user and org repositories.
 branding:
   icon: 'layout'
   color: 'blue'

@@ -1,4 +1,4 @@
-import type { Endpoints } from '@octokit/types'
+import type { EndpointDefaults, Endpoints, OctokitResponse } from '@octokit/types'
 import { Octokit } from 'octokit'
 import type { Lang } from '../../src/lib/types'
 import { MeterAPI } from './api'
@@ -12,6 +12,11 @@ type AuthRepo = Endpoints['GET /user/repos']['response']['data'][number]
 type InstallationRepo =
   Endpoints['GET /installation/repositories']['response']['data']['repositories'][number]
 export type Repo = UserRepo | OrgRepo | AuthRepo | InstallationRepo
+type ResponseFor<Route extends keyof Endpoints> = Endpoints[Route]['response']
+type IssueResponse = Awaited<ReturnType<Octokit['rest']['issues']['listForRepo']>>
+type HookRequest = (
+  options: Required<EndpointDefaults>,
+) => OctokitResponse<unknown> | Promise<OctokitResponse<unknown>>
 
 export interface ResSite {
   readonly siteUrl: string
@@ -23,14 +28,19 @@ export interface RepoActivity {
   readonly latestIssueAt: string | null
 }
 
+export interface RepoTraffic {
+  readonly views: number | null
+  readonly clones: number | null
+}
+
 export class GitHubAPI {
-  readonly meter = new MeterAPI()
+  readonly meter: MeterAPI = new MeterAPI()
   readonly #api: Octokit
   readonly #anonymous: Octokit
   readonly #privateAPI: Octokit | null
 
   constructor(private readonly config: AppConfig) {
-    const auth = config.token
+    const auth: string = config.token
     this.#api = trackedOctokit(auth, this.meter)
     this.#anonymous = auth ? trackedOctokit('', this.meter) : this.#api
     this.#privateAPI = auth ? this.#api : null
@@ -40,34 +50,37 @@ export class GitHubAPI {
     repos: readonly Repo[]
     accounts: ReadonlyMap<string, Account>
   }> {
-    const repos = new Map<string, Repo>()
-    const accounts = new Map<string, Account>()
+    const repos: Map<string, Repo> = new Map<string, Repo>()
+    const accounts: Map<string, Account> = new Map<string, Account>()
 
     for (const login of logins) {
       try {
-        const account = (
-          await this.#publicRequest((client) =>
-            client.rest.users.getByUsername({ username: login }),
+        const account: Account = (
+          await this.#publicRequest(
+            (client: Octokit): Promise<ResponseFor<'GET /users/{username}'>> =>
+              client.rest.users.getByUsername({ username: login }),
           )
         ).data
         accounts.set(login.toLowerCase(), account)
 
         let newRepos: Repo[]
         if (account.type === 'Organization') {
-          newRepos = await this.#publicRequest((client) =>
-            client.paginate(client.rest.repos.listForOrg, {
-              org: login,
-              type: 'public',
-              per_page: 100,
-            }),
+          newRepos = await this.#publicRequest(
+            (client: Octokit): Promise<OrgRepo[]> =>
+              client.paginate(client.rest.repos.listForOrg, {
+                org: login,
+                type: 'public',
+                per_page: 100,
+              }),
           )
         } else {
-          newRepos = await this.#publicRequest((client) =>
-            client.paginate(client.rest.repos.listForUser, {
-              username: login,
-              type: 'owner',
-              per_page: 100,
-            }),
+          newRepos = await this.#publicRequest(
+            (client: Octokit): Promise<UserRepo[]> =>
+              client.paginate(client.rest.repos.listForUser, {
+                username: login,
+                type: 'owner',
+                per_page: 100,
+              }),
           )
         }
         console.log(`Fetched ${newRepos.length} public repositories for ${login}.`)
@@ -79,11 +92,14 @@ export class GitHubAPI {
 
     if (this.#privateAPI) {
       try {
-        const allowedOwners = new Set(logins.map((login) => login.toLowerCase()))
-        const privateRepos =
+        const allowedOwners: Set<string> = new Set(
+          logins.map((login: string): string => login.toLowerCase()),
+        )
+        const privateRepos: AuthRepo[] | InstallationRepo[] =
           this.config.authMode === 'pat' ? await this.#patRepos() : await this.#installationRepos()
-        const selected = privateRepos.filter(
-          (repo) => repo.private && allowedOwners.has(repo.owner?.login?.toLowerCase() || ''),
+        const selected: (AuthRepo | InstallationRepo)[] = privateRepos.filter(
+          (repo: Repo): boolean =>
+            repo.private && allowedOwners.has(repo.owner?.login?.toLowerCase() || ''),
         )
         console.log(
           `Merged ${selected.length} private repositories authorized by the ${
@@ -112,11 +128,14 @@ export class GitHubAPI {
     if (!this.#privateAPI) return []
 
     const repos: InstallationRepo[] = []
-    for (let page = 1; ; page += 1) {
-      const res = await this.#privateAPI.request('GET /installation/repositories', {
-        per_page: 100,
-        page,
-      })
+    for (let page: number = 1; ; page += 1) {
+      const res: ResponseFor<'GET /installation/repositories'> = await this.#privateAPI.request(
+        'GET /installation/repositories',
+        {
+          per_page: 100,
+          page,
+        },
+      )
       repos.push(...res.data.repositories)
       if (res.data.repositories.length < 100) return repos
     }
@@ -125,14 +144,16 @@ export class GitHubAPI {
   async resolveSite(repo: Repo, dscrUrl: string | null): Promise<ResSite | null> {
     if (!repo.has_pages) return dscrUrl ? { siteUrl: dscrUrl } : null
 
-    const owner = repoOwner(repo)
+    const owner: string = repoOwner(repo)
     try {
-      const res = await this.#repoReq(repo, (client) =>
-        client.rest.repos.getPages({ owner, repo: repo.name }),
+      const res: ResponseFor<'GET /repos/{owner}/{repo}/pages'> = await this.#repoReq(
+        repo,
+        (client: Octokit): Promise<ResponseFor<'GET /repos/{owner}/{repo}/pages'>> =>
+          client.rest.repos.getPages({ owner, repo: repo.name }),
       )
       if (res.data.html_url) return { siteUrl: res.data.html_url }
     } catch (err: unknown) {
-      const status = errStatus(err)
+      const status: number | null = errStatus(err)
       if (status !== 403 && status !== 404) {
         console.warn(`Could not read Pages metadata for one repository: ${errMsg(err)}.`)
       }
@@ -142,14 +163,16 @@ export class GitHubAPI {
   }
 
   async langs(repo: Repo): Promise<Lang[]> {
-    const owner = repoOwner(repo)
+    const owner: string = repoOwner(repo)
     try {
-      const res = await this.#repoReq(repo, (client) =>
-        client.rest.repos.listLanguages({ owner, repo: repo.name }),
+      const res: ResponseFor<'GET /repos/{owner}/{repo}/languages'> = await this.#repoReq(
+        repo,
+        (client: Octokit): Promise<ResponseFor<'GET /repos/{owner}/{repo}/languages'>> =>
+          client.rest.repos.listLanguages({ owner, repo: repo.name }),
       )
-      const langs = Object.entries(res.data)
-        .map(([name, bytes]) => ({ name, bytes }))
-        .sort((a, b) => b.bytes - a.bytes)
+      const langs: Lang[] = Object.entries(res.data)
+        .map(([name, bytes]: [string, number]): Lang => ({ name, bytes }))
+        .sort((a: Lang, b: Lang): number => b.bytes - a.bytes)
       if (langs.length) return langs
     } catch (err: unknown) {
       console.warn(`Could not fetch languages for one repository: ${errMsg(err)}.`)
@@ -159,8 +182,12 @@ export class GitHubAPI {
   }
 
   async activity(repo: Repo): Promise<RepoActivity> {
-    const owner = repoOwner(repo)
-    const [contributors, release, issue] = await Promise.allSettled([
+    const owner: string = repoOwner(repo)
+    const [contributors, release, issue]: [
+      PromiseSettledResult<number | null>,
+      PromiseSettledResult<string | null>,
+      PromiseSettledResult<string | null>,
+    ] = await Promise.allSettled([
       this.#contributorCount(repo, owner),
       this.#latestRelease(repo, owner),
       this.#latestIssue(repo, owner),
@@ -177,46 +204,76 @@ export class GitHubAPI {
     }
   }
 
+  async traffic(repo: Repo): Promise<RepoTraffic> {
+    if (this.config.authMode !== 'pat' || !this.#privateAPI) {
+      return { views: null, clones: null }
+    }
+
+    const params: { owner: string; repo: string } = { owner: repoOwner(repo), repo: repo.name }
+    const [views, clones]: [
+      PromiseSettledResult<ResponseFor<'GET /repos/{owner}/{repo}/traffic/views'>>,
+      PromiseSettledResult<ResponseFor<'GET /repos/{owner}/{repo}/traffic/clones'>>,
+    ] = await Promise.allSettled([
+      this.#privateAPI.rest.repos.getViews(params),
+      this.#privateAPI.rest.repos.getClones(params),
+    ])
+    reportFail('traffic views', views)
+    reportFail('traffic clones', clones)
+    return {
+      views: validTrafficCount(fulfilledVal(views)?.data.count),
+      clones: validTrafficCount(fulfilledVal(clones)?.data.count),
+    }
+  }
+
   async #contributorCount(repo: Repo, owner: string): Promise<number | null> {
-    const res = await this.#repoReq(repo, (client) =>
-      client.rest.repos.listContributors({
-        owner,
-        repo: repo.name,
-        anon: 'true',
-        per_page: 1,
-        page: 1,
-      }),
+    const res: ResponseFor<'GET /repos/{owner}/{repo}/contributors'> = await this.#repoReq(
+      repo,
+      (client: Octokit): Promise<ResponseFor<'GET /repos/{owner}/{repo}/contributors'>> =>
+        client.rest.repos.listContributors({
+          owner,
+          repo: repo.name,
+          anon: 'true',
+          per_page: 1,
+          page: 1,
+        }),
     )
     return lastPage(res.headers.link) ?? res.data.length
   }
 
   async #latestRelease(repo: Repo, owner: string): Promise<string | null> {
-    const res = await this.#repoReq(repo, (client) =>
-      client.rest.repos.listReleases({
-        owner,
-        repo: repo.name,
-        per_page: 1,
-        page: 1,
-      }),
+    const res: ResponseFor<'GET /repos/{owner}/{repo}/releases'> = await this.#repoReq(
+      repo,
+      (client: Octokit): Promise<ResponseFor<'GET /repos/{owner}/{repo}/releases'>> =>
+        client.rest.repos.listReleases({
+          owner,
+          repo: repo.name,
+          per_page: 1,
+          page: 1,
+        }),
     )
-    const release = res.data[0]
+    const release: ResponseFor<'GET /repos/{owner}/{repo}/releases'>['data'][number] | undefined =
+      res.data[0]
     return release?.published_at || release?.created_at || null
   }
 
   async #latestIssue(repo: Repo, owner: string): Promise<string | null> {
-    for (let page = 1; ; page += 1) {
-      const res = await this.#repoReq(repo, (client) =>
-        client.rest.issues.listForRepo({
-          owner,
-          repo: repo.name,
-          state: 'all',
-          sort: 'updated',
-          direction: 'desc',
-          per_page: 100,
-          page,
-        }),
+    for (let page: number = 1; ; page += 1) {
+      const res: IssueResponse = await this.#repoReq(
+        repo,
+        (client: Octokit): Promise<IssueResponse> =>
+          client.rest.issues.listForRepo({
+            owner,
+            repo: repo.name,
+            state: 'all',
+            sort: 'updated',
+            direction: 'desc',
+            per_page: 100,
+            page,
+          }),
       )
-      const issue = res.data.find((item) => !item.pull_request)
+      const issue: IssueResponse['data'][number] | undefined = res.data.find(
+        (item: IssueResponse['data'][number]): boolean => !item.pull_request,
+      )
       if (issue) return issue.updated_at || null
       if (res.data.length < 100) return null
     }
@@ -247,22 +304,32 @@ export function repoOwner(repo: Repo): string {
   return repo.owner?.login || repo.full_name.split('/')[0] || ''
 }
 
+function validTrafficCount(count: number | undefined): number | null {
+  return typeof count === 'number' && Number.isFinite(count) && count >= 0 ? count : null
+}
+
 function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
 function trackedOctokit(auth: string, meter: MeterAPI): Octokit {
-  const client = new Octokit(auth ? { auth } : {})
-  client.hook.wrap('request', async (request, options) => {
-    try {
-      const res = await request(options)
-      meter.record({ hdrs: res.headers })
-      return res
-    } catch (err: unknown) {
-      meter.record(resFromErr(err))
-      throw err
-    }
-  })
+  const client: Octokit = new Octokit(auth ? { auth } : {})
+  client.hook.wrap(
+    'request',
+    async (
+      request: HookRequest,
+      options: Required<EndpointDefaults>,
+    ): Promise<OctokitResponse<unknown>> => {
+      try {
+        const res: OctokitResponse<unknown> = await request(options)
+        meter.record({ hdrs: res.headers })
+        return res
+      } catch (err: unknown) {
+        meter.record(resFromErr(err))
+        throw err
+      }
+    },
+  )
   return client
 }
 
@@ -271,7 +338,7 @@ function resFromErr(
 ): { readonly hdrs?: Record<string, string | number | undefined> } | undefined {
   if (!isRecord(err) || !isRecord(err.response)) return undefined
 
-  const response = err.response
+  const response: Record<string, unknown> = err.response
   return {
     hdrs: isHeaderMap(response.headers) ? response.headers : undefined,
   }
@@ -289,7 +356,8 @@ function isRecord(val: unknown): val is Record<string, unknown> {
 function isHeaderMap(val: unknown): val is Record<string, string | number | undefined> {
   if (!isRecord(val)) return false
   return Object.values(val).every(
-    (item) => item === undefined || typeof item === 'string' || typeof item === 'number',
+    (item: unknown): boolean =>
+      item === undefined || typeof item === 'string' || typeof item === 'number',
   )
 }
 
@@ -298,7 +366,9 @@ function addRepos(target: Map<string, Repo>, repos: readonly Repo[]): void {
 }
 
 function lastPage(link: string | undefined): number | null {
-  const match = link?.match(/[?&]page=(\d+)[^>]*>;\s*rel="last"/)
+  const match: RegExpMatchArray | null | undefined = link?.match(
+    /[?&]page=(\d+)[^>]*>;\s*rel="last"/,
+  )
   return match ? Number(match[1]) : null
 }
 

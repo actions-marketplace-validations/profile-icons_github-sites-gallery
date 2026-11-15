@@ -1,4 +1,11 @@
-$font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+$font-sans:
+  Inter,
+  ui-sans-serif,
+  system-ui,
+  -apple-system,
+  BlinkMacSystemFont,
+  "Segoe UI",
+  sans-serif;
 
 $bg-canvas: #0c0e12;
 $bg-surface: #12151a;
@@ -35,7 +42,7 @@ $page-padding: clamp(14px, 2vw, 28px);
 
 @mixin focus-ring {
   border-color: $accent-soft;
-  box-shadow: 0 0 0 3px rgba($accent-soft, .12);
+  box-shadow: 0 0 0 3px rgba($accent-soft, 0.12);
 }
 
 @mixin control-shell {

@@ -1,15 +1,27 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import type { GalleryMetadata, Profile, Site } from '../src/lib/types'
-import { loadConfig } from './lib/config'
-import { type Account, GitHubAPI, type Repo, type ResSite, repoOwner } from './lib/github'
+import type { GalleryMetadata, Lang, Profile, Site } from '../src/lib/types'
+import { type AppConfig, loadConfig } from './lib/config'
+import {
+  type Account,
+  GitHubAPI,
+  type Repo,
+  type RepoActivity,
+  type RepoTraffic,
+  type ResSite,
+  repoOwner,
+} from './lib/github'
 import { dscrSiteUrl, latestDate, mapConcurr, screenshotName, stripSiteUrl } from './lib/site'
 
-const SITES_OUTPUT = path.resolve('src/lib/data/sites.json')
-const METADATA_OUTPUT = path.resolve('src/lib/data/metadata.json')
+type PrequalifiedRepo = { repo: Repo; descriptionUrl: string | null }
+type SiteResolution = { repo: Repo; site: ResSite | null }
+type SiteCandidate = { repo: Repo; site: ResSite }
 
-const config = loadConfig()
-const gh = new GitHubAPI(config)
+const SITES_OUTPUT: string = path.resolve('src/lib/data/sites.json')
+const METADATA_OUTPUT: string = path.resolve('src/lib/data/metadata.json')
+
+const config: AppConfig = loadConfig()
+const gh: GitHubAPI = new GitHubAPI(config)
 
 try {
   await sync()
@@ -23,8 +35,10 @@ async function sync(): Promise<void> {
     return
   }
 
-  const { repos, accounts } = await gh.collectRepos(config.logins)
-  const profile = buildProfile(accounts)
+  const { repos, accounts }: Awaited<ReturnType<GitHubAPI['collectRepos']>> = await gh.collectRepos(
+    config.logins,
+  )
+  const profile: Profile = buildProfile(accounts)
   console.log(`Header profile: ${profile.login}.`)
   const metadata: GalleryMetadata = {
     profile,
@@ -34,22 +48,39 @@ async function sync(): Promise<void> {
     `Gallery source repository: ${config.srcRepoUrl ? config.srcRepoUrl : '(not detected)'}.`,
   )
 
-  const prequal = repos
-    .map((repo) => ({ repo, descriptionUrl: dscrSiteUrl(repo.description || '') }))
-    .filter(({ repo, descriptionUrl }) => repo.has_pages || descriptionUrl)
+  const prequal: PrequalifiedRepo[] = repos
+    .map(
+      (repo: Repo): PrequalifiedRepo => ({
+        repo,
+        descriptionUrl: dscrSiteUrl(repo.description || ''),
+      }),
+    )
+    .filter(
+      ({ repo, descriptionUrl }: PrequalifiedRepo): boolean | string | null =>
+        repo.has_pages || descriptionUrl,
+    )
   console.log(`Found ${prequal.length} repositories with GitHub Pages or site URL in description.`)
-  const res = await mapConcurr(prequal, 5, async ({ repo, descriptionUrl }) => ({
-    repo,
-    site: await gh.resolveSite(repo, descriptionUrl),
-  }))
-
-  const candidates = res.filter(
-    (entry): entry is { repo: Repo; site: NonNullable<typeof entry.site> } => Boolean(entry.site),
+  const res: SiteResolution[] = await mapConcurr(
+    prequal,
+    5,
+    async ({ repo, descriptionUrl }: PrequalifiedRepo): Promise<SiteResolution> => ({
+      repo,
+      site: await gh.resolveSite(repo, descriptionUrl),
+    }),
   )
 
-  const sites = await mapConcurr(candidates, 4, async ({ repo, site }) => buildSite(repo, site))
+  const candidates: SiteCandidate[] = res.filter(
+    (entry: SiteResolution): entry is { repo: Repo; site: NonNullable<typeof entry.site> } =>
+      Boolean(entry.site),
+  )
+
+  const sites: Site[] = await mapConcurr(
+    candidates,
+    4,
+    async ({ repo, site }: SiteCandidate): Promise<Site> => buildSite(repo, site),
+  )
   sites.sort(
-    (a, b) =>
+    (a: Site, b: Site): number =>
       b.stars - a.stars ||
       compareOptionalDates(b.activityAt, a.activityAt) ||
       a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base', numeric: true }),
@@ -60,8 +91,12 @@ async function sync(): Promise<void> {
 }
 
 async function buildSite(repo: Repo, deployed: ResSite): Promise<Site> {
-  const owner = repoOwner(repo)
-  const [langs, activity] = await Promise.all([gh.langs(repo), gh.activity(repo)])
+  const owner: string = repoOwner(repo)
+  const [langs, activity, traffic]: [Lang[], RepoActivity, RepoTraffic] = await Promise.all([
+    gh.langs(repo),
+    gh.activity(repo),
+    gh.traffic(repo),
+  ])
 
   return {
     name: repo.name,
@@ -72,11 +107,15 @@ async function buildSite(repo: Repo, deployed: ResSite): Promise<Site> {
     isPrivate: Boolean(repo.private),
     isFork: Boolean(repo.fork),
     isTemplate: Boolean(repo.is_template),
-    topics: [...(repo.topics || [])].slice(0, 20).sort((a, b) => a.localeCompare(b)),
+    topics: [...(repo.topics || [])]
+      .slice(0, 20)
+      .sort((a: string, b: string): number => a.localeCompare(b)),
     languages: langs,
     stars: repo.stargazers_count ?? 0,
     forks: repo.forks_count ?? 0,
     contributors: activity.contributors,
+    trafficViews: traffic.views,
+    trafficClones: traffic.clones,
     createdAt: repo.created_at || null,
     activityAt: latestDate(repo.pushed_at, activity.latestReleaseAt, activity.latestIssueAt),
     screenshot: `screenshots/${screenshotName(owner, repo.name)}`,
@@ -84,8 +123,8 @@ async function buildSite(repo: Repo, deployed: ResSite): Promise<Site> {
 }
 
 function buildProfile(accounts: ReadonlyMap<string, Account>): Profile {
-  const login = config.primaryLogin || config.logins[0] || ''
-  const account = accounts.get(login.toLowerCase())
+  const login: string = config.primaryLogin || config.logins[0] || ''
+  const account: Account | undefined = accounts.get(login.toLowerCase())
   return {
     login: account?.login || login,
     name: account?.name || null,
@@ -95,8 +134,8 @@ function buildProfile(accounts: ReadonlyMap<string, Account>): Profile {
 }
 
 function compareOptionalDates(left: string | null, right: string | null): number {
-  const leftTime = left ? Date.parse(left) : 0
-  const rightTime = right ? Date.parse(right) : 0
+  const leftTime: number = left ? Date.parse(left) : 0
+  const rightTime: number = right ? Date.parse(right) : 0
   return leftTime - rightTime
 }
 
